@@ -4,13 +4,10 @@ import os
 import subprocess
 import sys
 import glob
+import time
 
 class CPSAutograder:
     def __init__(self):
-        pass
-        
-    def setup_test_data(self):
-        """No database setup needed for this problem"""
         pass
         
     def grade_submission(self, submission_path):
@@ -37,37 +34,45 @@ function setButtonColor(color) {{
     }}
 }}
 
-// Mock XMLHttpRequest
-class MockXMLHttpRequest {{
+// Provide XMLHttpRequest implementation using fetch
+class XMLHttpRequest {{
     constructor() {{
         this.listeners = {{}};
     }}
-    
+
     addEventListener(event, callback) {{
         this.listeners[event] = callback;
     }}
-    
+
     open(method, url) {{
         this.method = method;
         this.url = url;
     }}
-    
+
     send() {{
-        // Simulate async response
-        setTimeout(() => {{
-            this.responseText = '{{"color": "orange"}}';
-            if (this.listeners.load) {{
-                this.listeners.load();
-            }}
-        }}, 100);
+        fetch(this.url)
+            .then(response => response.json())
+            .then(data => {{
+                this.responseText = JSON.stringify(data);
+                if (this.listeners['load']) {{
+                    this.listeners['load']();
+                }}
+            }})
+            .catch(error => {{
+                if (this.listeners['error']) {{
+                    this.listeners['error'](error);
+                }}
+            }});
     }}
 }}
 
-// Replace XMLHttpRequest with mock
-global.XMLHttpRequest = MockXMLHttpRequest;
-
 // Student's code
-{student_code}
+try {{
+    {student_code.replace("this.responseText", "req.responseText")}
+}} catch (e) {{
+    hasError = true;
+    console.error(e);
+}}
 
 // Wait for async operations and print result
 setTimeout(() => {{
@@ -77,7 +82,9 @@ setTimeout(() => {{
         hasError: hasError
     }}));
     console.log("RESULT_END");
-}}, 200);"""
+}}, 1000);  // Increased timeout to allow for real server response""".replace(
+                "/getColor", "http://localhost:8080/getColor"
+            )
             
             # Save test wrapper to temporary file
             temp_file = "temp_test_6b.js"
@@ -88,8 +95,13 @@ setTimeout(() => {{
             result = subprocess.run(
                 ['node', temp_file],
                 capture_output=True,
-                text=True
+                text=True,
+                env={**os.environ, 'PYTHONUNBUFFERED': '1'}
             )
+
+            print("STDOUT:", result.stdout)
+            print("STDERR:", result.stderr)
+            print("Return code:", result.returncode)
             
             # Clean up
             os.remove(temp_file)
@@ -128,6 +140,10 @@ setTimeout(() => {{
     
     def evaluate_result(self, result, submission_path):
         """Evaluate the student's solution"""
+        accuracy_score = 0
+        formatting_score = 0
+        feedback = ""
+
         if result is None:
             return {
                 'score': 0,
@@ -136,37 +152,39 @@ setTimeout(() => {{
         
         if result.get('hasError'):
             return {
-                'score': 1,
+                'score': 0,
                 'feedback': "Your code threw an error during execution. Make sure you're handling the color value correctly."
             }
 
         if result.get('buttonColor') != 'orange':
-            return {
-                'score': 2,
-                'feedback': "The button color was not correctly set to 'orange'. Make sure you're using CPS correctly to handle the asynchronous response."
-            }
-            
-        # More thorough CPS style checking
-        with open(submission_path, 'r') as f:
-            code = f.read().lower()
-            has_continuation = 'function(' in code and ('ret(' in code or 'continuation(' in code)
-            has_callback = 'addeventlistener' in code and 'load' in code
-            
-            if not has_continuation:
-                return {
-                    'score': 3,
-                    'feedback': "Solution works but doesn't appear to use proper CPS style. Make sure you're using continuation functions with explicit callbacks."
-                }
-            
-            if not has_callback:
-                return {
-                    'score': 4,
-                    'feedback': "Solution uses CPS but might not be handling the XMLHttpRequest callback correctly."
-                }
+            feedback += "The button color was not correctly set to 'orange'. Make sure you're using CPS correctly to handle the asynchronous response."
+            accuracy_score = 1
         
+        if result.get('buttonColor') == 'orange' and not result.get('hasError'):
+            with open(submission_path, 'r') as f:
+                code = f.read()
+                # Check for inline callbacks
+                has_inline_callback = any([
+                    "addEventListener('load', function" in code,
+                    'addEventListener("load", function' in code,
+                    "addEventListener('load', (" in code,  # Arrow function
+                    'addEventListener("load", (' in code,  # Arrow function
+                    "addEventListener('load',function" in code,
+                    'addEventListener("load",function' in code
+                ])
+
+                accuracy_score = 2
+
+                if has_inline_callback:
+                    formatting_score = 2
+                    feedback += " Solution works but uses inline callbacks. For better CPS style, define your continuation function separately."
+                else:
+                    formatting_score = 3
+                    feedback += "Perfect! Your solution correctly implements CPS and handles the async color change."
+                    
         return {
-            'score': 5,
-            'feedback': "Perfect! Your solution correctly implements CPS and handles the async color change."
+            'score': accuracy_score + formatting_score,
+            'feedback': feedback
         }
     
     def grade_folder(self, submissions_folder):
@@ -185,24 +203,35 @@ def main():
     if len(sys.argv) != 2:
         print("Usage: python 6b.py <path_to_submissions_folder>")
         sys.exit(1)
+    
+    # Start the server in a separate process
+    server_process = subprocess.Popen([sys.executable, '6b_server.py'])
+    try:
+        # Wait a moment for the server to start
+        time.sleep(1)
         
-    submissions_folder = sys.argv[1]
-    grader = CPSAutograder()
-    
-    # Grade all submissions
-    results = grader.grade_folder(submissions_folder)
-    
-    # Print results
-    print("\nGrading Results:")
-    print("-" * 40)
-    for student_id, result in results.items():
-        print(f"\nStudent: {student_id}")
-        print(f"Score: {result['score']}/5")
-        print(f"Feedback: {result['feedback']}")
+        submissions_folder = sys.argv[1]
+        grader = CPSAutograder()
+        
+        # Grade all submissions
+        results = grader.grade_folder(submissions_folder)
+        
+        # Print results
+        print("\nGrading Results:")
+        print("-" * 40)
+        for student_id, result in results.items():
+            print(f"\nStudent: {student_id}")
+            print(f"Score: {result['score']}/5")
+            print(f"Feedback: {result['feedback']}")
 
-    # Save results to a JSON file
-    with open('results_6b.json', 'w') as f:
-        json.dump(results, f, indent=4)
+        # Save results to a JSON file
+        with open('results_6b.json', 'w') as f:
+            json.dump(results, f, indent=4)
+    
+    finally:
+        # Clean up the server process
+        server_process.terminate()
+        server_process.wait()
 
 if __name__ == "__main__":
     main()
