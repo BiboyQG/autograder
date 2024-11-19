@@ -11,13 +11,10 @@ class CPSAutograder:
         pass
         
     def grade_submission(self, submission_path):
-        """Grade a student's CPS.js submission"""
         try:
-            # Read student's submission
             with open(submission_path, 'r') as f:
                 student_code = f.read()
             
-            # Create a test wrapper that will execute the student's code
             test_wrapper = f"""let buttonColor = null;
 let hasError = false;
 
@@ -86,12 +83,10 @@ setTimeout(() => {{
                 "/getColor", "http://localhost:8080/getColor"
             )
             
-            # Save test wrapper to temporary file
             temp_file = "temp_test_6b.js"
             with open(temp_file, 'w') as f:
                 f.write(test_wrapper)
             
-            # Execute using Node.js
             result = subprocess.run(
                 ['node', temp_file],
                 capture_output=True,
@@ -103,10 +98,8 @@ setTimeout(() => {{
             print("STDERR:", result.stderr)
             print("Return code:", result.returncode)
             
-            # Clean up
             os.remove(temp_file)
             
-            # Parse the output
             student_result = self.parse_output(result.stdout)
             
             return self.evaluate_result(student_result, submission_path)
@@ -118,7 +111,6 @@ setTimeout(() => {{
             }
     
     def parse_output(self, output):
-        """Parse Node.js output to extract results"""
         try:
             start_marker = "RESULT_START"
             end_marker = "RESULT_END"
@@ -139,7 +131,6 @@ setTimeout(() => {{
             return None
     
     def evaluate_result(self, result, submission_path):
-        """Evaluate the student's solution"""
         accuracy_score = 0
         formatting_score = 0
         feedback = ""
@@ -163,12 +154,12 @@ setTimeout(() => {{
         if result.get('buttonColor') == 'orange' and not result.get('hasError'):
             with open(submission_path, 'r') as f:
                 code = f.read()
-                # Check for inline callbacks
+
                 has_inline_callback = any([
                     "addEventListener('load', function" in code,
                     'addEventListener("load", function' in code,
-                    "addEventListener('load', (" in code,  # Arrow function
-                    'addEventListener("load", (' in code,  # Arrow function
+                    "addEventListener('load', (" in code,
+                    'addEventListener("load", (' in code,
                     "addEventListener('load',function" in code,
                     'addEventListener("load",function' in code
                 ])
@@ -188,7 +179,6 @@ setTimeout(() => {{
         }
     
     def grade_folder(self, submissions_folder):
-        """Grade all CPS.js files in the given folder"""
         results = {}
         submission_files = glob.glob(os.path.join(submissions_folder, "*CPS.js"))
         print(f"Grading {len(submission_files)} submissions")
@@ -204,19 +194,15 @@ def main():
         print("Usage: python 6b.py <path_to_submissions_folder>")
         sys.exit(1)
     
-    # Start the server in a separate process
     server_process = subprocess.Popen([sys.executable, '6b_server.py'])
     try:
-        # Wait a moment for the server to start
         time.sleep(1)
         
         submissions_folder = sys.argv[1]
         grader = CPSAutograder()
         
-        # Grade all submissions
         results = grader.grade_folder(submissions_folder)
         
-        # Print results
         print("\nGrading Results:")
         print("-" * 40)
         for student_id, result in results.items():
@@ -224,12 +210,10 @@ def main():
             print(f"Score: {result['score']}/5")
             print(f"Feedback: {result['feedback']}")
 
-        # Save results to a JSON file
         with open('results_6b.json', 'w') as f:
             json.dump(results, f, indent=4)
     
     finally:
-        # Clean up the server process
         server_process.terminate()
         server_process.wait()
 
