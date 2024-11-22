@@ -51,7 +51,6 @@ result_files = {
 # Create a plot for each result file
 for question, file_path in result_files.items():
     plot = plot_assignment_results(file_path, f'Score Distribution - {question}')
-    plot.show()
 
 # Calculate and print some statistics
 def print_statistics(results_file, question_name):
