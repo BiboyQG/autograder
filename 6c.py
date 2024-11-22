@@ -107,7 +107,7 @@ setTimeout(() => {{
 
         if result.get("buttonColor") != "orange":
             feedback += "The button color was not correctly set to 'orange'. Make sure you're using Promises correctly to handle the asynchronous response."
-            accuracy_score = 1
+            accuracy_score = 2
 
         if result.get("buttonColor") == "orange" and not result.get("hasError"):
             with open(submission_path, "r") as f:
@@ -166,7 +166,7 @@ def main():
         print("-" * 40)
         for student_id, result in results.items():
             print(f"\nStudent: {student_id}")
-            print(f"Score: {result['score']}/5")
+            print(f"Score: {result['score']}/10")
             print(f"Feedback: {result['feedback']}")
 
         with open("results/results_6c.json", "w") as f:
