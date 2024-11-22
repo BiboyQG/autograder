@@ -38,7 +38,7 @@ def plot_assignment_results(results_file, title=None):
     # Add grid for better readability
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)
 
-    plt.savefig(f'images/{results_file}.png')
+    plt.savefig(f'images/{results_file.split("/")[-1].replace(".json", ".png")}')
     
     return plt
 
