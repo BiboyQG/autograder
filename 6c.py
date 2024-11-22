@@ -169,7 +169,7 @@ def main():
             print(f"Score: {result['score']}/5")
             print(f"Feedback: {result['feedback']}")
 
-        with open("results_6c.json", "w") as f:
+        with open("results/results_6c.json", "w") as f:
             json.dump(results, f, indent=4)
 
     finally:

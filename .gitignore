@@ -1,5 +1,7 @@
 submissions/**
 
-results*.json
+results/**
+
+*.json
 
 .DS_Store
