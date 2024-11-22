@@ -44,8 +44,8 @@ def plot_assignment_results(results_file, title=None):
 
 # Example usage for multiple files
 result_files = {
-    'Question 5a': 'results/results_5a.json',
-    'Question 6b': 'results/results_6b.json'
+    'Question 6b': 'results/results_6b.json',
+    'Question 6c': 'results/results_6c.json'
 }
 
 # Create a plot for each result file
